@@ -27,7 +27,7 @@
 static const int NUM_CLASSES = 8;
 #define DEVICE 0 // GPU id
 #define NMS_THRESH 0.25
-#define BBOX_CONF_THRESH 0.5
+#define BBOX_CONF_THRESH 0.53
 
 enum class COLOR
 {

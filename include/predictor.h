@@ -240,7 +240,8 @@ public:
     GimbalPose last_eular_;
 
     int count = 0;
-    bool flag = false;
+    bool flag_v = false;
+    bool flag_switch=false;
     Object last_obj;
 
     bool left_flag = false;
@@ -256,21 +257,27 @@ public:
     std::deque<double> time_buff;
     bool isSwitch(Vector3d up_switch, Vector3d down_switch)
     {
-        float x1 = std::abs(up_switch[0] - down_switch[0]);
-        float z1 = std::abs(up_switch[2] - down_switch[2]);
-        float residual_distance = 0;
+        // float x1 = std::abs(up_switch[0] - down_switch[0]);
+        // float z1 = std::abs(up_switch[2] - down_switch[2]);
+        // float residual_distance = 0;
 
-        if (up_switch[2] > 3.5)
-        {
-            z1 = 0;
-        }
+        // if (up_switch[2] > 3.5)
+        // {
+        //     z1 = 0;
+        // }
 
         // if(up_switch[0] > 3.5)
         // {
         //     x1 = 0;
         // }
+        float distance_;
+        distance_ = std::sqrt(up_switch[0] * up_switch[0] + up_switch[2] * up_switch[2]);
+        float yaw_now = std::sin(up_switch[0] / distance_) * 180 / CV_PI;
 
-        if (x1 + z1 > 0.3)
+        float distance_last;
+        distance_last = std::sqrt(down_switch[0] * down_switch[0] + down_switch[2] * down_switch[2]);
+        float yaw_last = std::asin(down_switch[0] / distance_last) * 180 / CV_PI;
+        if (std::abs(yaw_now - yaw_last) > 3.0)
         {
             if (up_switch[0] > down_switch[0])
             {
@@ -293,7 +300,7 @@ public:
     }
     bool anGyro(std::deque<double> time_buff_)
     {
-        if (time_buff_[6] - time_buff_[5] < 0.5 && time_buff_[5] - time_buff_[4] < 0.5 && time_buff_[4] - time_buff_[3] < 0.5 && time_buff_[3] - time_buff_[2] < 0.5 && time_buff_[2] - time_buff_[1] < 0.5 && time_buff_[1] - time_buff_[0] < 0.5)
+        if (time_buff_[3] - time_buff_[2] < 0.5 && time_buff_[2] - time_buff_[1] < 0.5 && time_buff_[1] - time_buff_[0] < 0.5)
         {
             return true;
         }

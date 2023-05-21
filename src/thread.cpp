@@ -4,8 +4,8 @@
 
 // #define VIDEO
 // #define SAVE_VIDEO
-#define DAHENG
-// #define MIDVISION
+//#define DAHENG
+ #define MIDVISION
 
 using namespace Horizon;
 
@@ -444,7 +444,7 @@ void Factory::consumer()
 			cv2eigen(predic_pose_->pnp_solve_->K_, F);
 			Eigen::Vector3d pu = pc_to_pu(pc, F);
 			cv::circle(img, {int(pu(0, 0)), int(predic_pose_->obj_pixe_.y)}, 5, cv::Scalar(0, 0, 255), 3);
-			if (predic_pose_->flag)
+			if (predic_pose_->flag_switch)
 			{
 				cv::circle(img, {200, 200}, 5, cv::Scalar(0, 0, 255), 3);
 			}
@@ -462,13 +462,13 @@ void Factory::consumer()
 				cv2eigen(predic_pose_->pnp_solve_->K_, F1);
 				Eigen::Vector3d pul = pc_to_pu(pl, F1);
 
-				cv::circle(img, {int(pul(0, 0)), int(predic_pose_->obj_pixe_.y-100)}, 5, cv::Scalar(0, 255, 0), 3);
+				//cv::circle(img, {int(pul(0, 0)), int(predic_pose_->obj_pixe_.y-100)}, 5, cv::Scalar(0, 255, 0), 3);
 				
 				Eigen::Vector3d pr = pw_to_pc(predic_pose_->right_switch, predic_pose_->transform_vector_);
 				Eigen::Matrix3d Fr;
 				cv2eigen(predic_pose_->pnp_solve_->K_, Fr);
 				Eigen::Vector3d pur = pc_to_pu(pr, Fr);
-				cv::circle(img, {int(pur(0, 0)), int(predic_pose_->obj_pixe_.y-100)}, 5, cv::Scalar(255, 0, 0), 3);
+				//cv::circle(img, {int(pur(0, 0)), int(predic_pose_->obj_pixe_.y-100)}, 5, cv::Scalar(255, 0, 0), 3);
 			}
 			else
 			{

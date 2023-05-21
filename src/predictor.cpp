@@ -341,7 +341,7 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 	transform_vector_ = transform_vector.inverse();
 	// 如果这一帧没有装甲板，先看看init_是true还是false
 	// 是true
-	cout << "imu_data.yaw2" << imu_data.yaw << endl;
+
 	if (!objects.size())
 	{
 		loss_cnt_++;
@@ -460,7 +460,7 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 		float yaw_now = std::sin(obj.coord[0] / distance_) * 180 / CV_PI;
 
 		float distance_last;
-		distance_last = std::sqrt(last_obj.coord[0] * last_obj.coord[0] + last_obj.coord[1] * last_obj.coord[2]);
+		distance_last = std::sqrt(last_obj.coord[0] * last_obj.coord[0] + last_obj.coord[2] * last_obj.coord[2]);
 		float yaw_last = std::asin(last_obj.coord[0] / distance_last) * 180 / CV_PI;
 
 		// if(std::abs(yaw_now - yaw_last) > 3.0)
@@ -472,19 +472,11 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 		{
 			cnt_switch++;
 
-			flag = true;
+			flag_switch = true;
 
 			velocities_.clear();
-			float z1 = 0;
-			if (obj.coord[2] > 3.5)
-			{
-				z1 = 0;
-			}
-			else
-			{
-				z1 = std::abs(obj.coord[2] - last_obj.coord[2]);
-			}
-			if (z1 + std::abs(obj.coord[0] - last_obj.coord[0]) > 0.3 && count < 5)
+
+			if (std::abs(yaw_now - yaw_last) > 3.0 && count < 5)
 			{
 				count++;
 				obj.coord = last_obj.coord;
@@ -510,10 +502,10 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 		}
 		else
 		{
-			flag = false;
+			flag_switch = false;
 		}
 	}
-	if (cnt_switch > 7)
+	if (cnt_switch > 5)
 	{
 		is_gyro = anGyro(time_buff);
 	}
@@ -586,7 +578,7 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 	current_state[3] = current_time_;
 
 	Eigen::Vector3d now_v;
-	if (flag == true)
+	if (flag_v == true)
 	{
 		now_v = last_velocity_;
 	}
@@ -618,7 +610,7 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 	// now_v[2] = 0;
 	cv::Point3f point;
 	point.x = now_v[0];
-	drawCurveData(point);
+	//drawCurveData(point);
 
 	Eigen::Vector3d predict_location;
 
@@ -699,7 +691,7 @@ float PredictorPose::bullteFlyTime(Eigen::Vector3d coord)
 
 	std::cout << "[p1.x] " << p1.x << " [p1.x] " << p1.y << " [p1.z] " << p1.z << std::endl;
 
-	float v0_ = 30;
+	float v0_ = 16;
 
 	float g = 9.80665;
 
@@ -707,7 +699,7 @@ float PredictorPose::bullteFlyTime(Eigen::Vector3d coord)
 	// 先算yaw的值的
 	float distance1;
 	distance1 = std::sqrt(p1.x * p1.x + p1.z * p1.z);
-	gm_ptz.yaw = std::sin(p1.x / distance1) * 180 / CV_PI;
+	gm_ptz.yaw = std::asin(p1.x / distance1) * 180 / CV_PI;
 
 	if (p1.z < 0 && p1.x >= 0)
 	{
@@ -717,7 +709,6 @@ float PredictorPose::bullteFlyTime(Eigen::Vector3d coord)
 	{
 		gm_ptz.yaw = 2 * (-90 - gm_ptz.yaw) + gm_ptz.yaw;
 	}
-	// std::cout << "[yaw: ]" << gm_ptz.yaw << std::endl;
 
 	// pitch值
 	float a = -0.5 * g * (std::pow(distance1, 2) / std::pow(v0_, 2));
@@ -843,8 +834,6 @@ Eigen::Vector3d PredictorPose::CeresVelocity(std::deque<Eigen::Vector4d> velocit
 	// ave_v_[1] = vy;
 	// ave_v_[2] = vz;
 	
-	// int count_=0;
-	
 	// if (ave_v.size() != 0)
 	// {
 		// double sum_vx, sum_vy, sum_vz;
@@ -858,15 +847,15 @@ Eigen::Vector3d PredictorPose::CeresVelocity(std::deque<Eigen::Vector4d> velocit
 		// double aver_vy = sum_vy / ave_v.size();
 		// double aver_vz = sum_vz / ave_v.size();
 
-	// if (vx * last_velocity_[0] < 0 && count_ < 4)
-	// {
-	// 	vx = last_velocity_[0];
-	// 	count_++;
-	// }
-    // else
-	// {
-	// 	count_=0;
-	// }
+	if (vx * last_velocity_[0] < 0 && v_count < 4)
+	{
+		vx = last_velocity_[0];
+		v_count++;
+	}
+    else
+	{
+		v_count=0;
+	}
 
 
 	return {vx, vy, vz};
