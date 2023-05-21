@@ -852,7 +852,7 @@ Eigen::Vector3d PredictorPose::CeresVelocity(std::deque<Eigen::Vector4d> velocit
 		vx = last_velocity_[0];
 		v_count++;
 	}
-    else
+        else
 	{
 		v_count=0;
 	}
