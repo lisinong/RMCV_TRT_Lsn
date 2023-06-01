@@ -443,72 +443,101 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 	// std::pair<Eigen::Vector3d, Eigen::Vector3d> world_cam_pose;
 	// world_cam_pose = pnp_solve_->poseCalculation(obj);
 
-	if (std::abs(obj.coord.norm() - last_pose_.first.norm()) > 1.00)
-	{
-		// velocities_.clear();
-	}
+	float distance_;
+	distance_ = std::sqrt(obj.coord[0] * obj.coord[0] + obj.coord[2] * obj.coord[2]);
+	float yaw_now = std::asin(obj.coord[0] / distance_) * 180 / CV_PI;
 
-	if (false)
+	float distance_last;
+	distance_last = std::sqrt(last_obj.coord[0] * last_obj.coord[0] + last_obj.coord[2] * last_obj.coord[2]);
+	float yaw_last = std::asin(last_obj.coord[0] / distance_last) * 180 / CV_PI;
+
+	if (isSwitch(obj.coord, last_obj.coord))
 	{
+		cnt_switch++;
+		flag_switch = true;
+		Eigen::Vector3d now_record = obj.coord;
 		velocities_.clear();
-		init_ = true;
-	}
-	else
-	{
-		float distance_;
-		distance_ = std::sqrt(obj.coord[0] * obj.coord[0] + obj.coord[2] * obj.coord[2]);
-		float yaw_now = std::sin(obj.coord[0] / distance_) * 180 / CV_PI;
-
-		float distance_last;
-		distance_last = std::sqrt(last_obj.coord[0] * last_obj.coord[0] + last_obj.coord[2] * last_obj.coord[2]);
-		float yaw_last = std::asin(last_obj.coord[0] / distance_last) * 180 / CV_PI;
-
-		// if(std::abs(yaw_now - yaw_last) > 3.0)
-		// {
-		// 	obj.coord = last_obj.coord;
-		// 	obj.pyr = last_obj.pyr;
-		// }
-		if (isSwitch(obj.coord, last_obj.coord))
+		if (cnt_switch < 6 && is_gyro == false)
 		{
-			cnt_switch++;
+			obj.coord = last_obj.coord + last_velocity_ * (current_time_ - last_time_);
+			obj.pyr = last_obj.pyr;
+		}
 
-			flag_switch = true;
+		if (std::abs(current_time_ - last_switch_time_) > 1.0)
+		{
+			is_gyro_cnt_ = 0;
+			last_switch_time_ = current_time_;
+		}
 
-			velocities_.clear();
+		if ((std::abs(current_time_ - last_switch_time_)) > 0.15 && (current_time_ - last_switch_time_) < 1.0)
+		{
+			is_gyro_cnt_++;
+		}
 
-			if (std::abs(yaw_now - yaw_last) > 3.0 && count < 5)
+		if (is_gyro_cnt_ > 4)
+		{
+			is_gyro = true;
+			if (yaw_now > yaw_last)
 			{
-				count++;
-				obj.coord = last_obj.coord;
-				obj.pyr = last_obj.pyr;
+				right_switch = obj.coord;
+				left_switch = last_obj.coord;
 			}
 			else
 			{
-				count = 0;
-			}
-			cout << "coord   :" << std::abs(obj.coord[2] - last_obj.coord[2]) + std::abs(obj.coord[0] - last_obj.coord[0]) << endl;
-			cout << "coord_z :" << std::abs(obj.coord[2] - last_obj.coord[2]) << endl;
-			cout << "coord_x :" << std::abs(obj.coord[0] - last_obj.coord[0]) << endl;
-			if (time_buff.size() < 4)
-			{
-				time_buff.emplace_back(current_time_);
-			}
-			else
-			{
-
-				time_buff.pop_front();
-				time_buff.emplace_back(current_time_);
+				right_switch = last_obj.coord;
+				left_switch = obj.coord;
 			}
 		}
 		else
 		{
-			flag_switch = false;
+			is_gyro = false;
 		}
+
+		last_switch_time_ = current_time_;
+		// if(current_time_ - last_switch_time_ > 3)
+		// {
+		// 	last_switch_time_ = current_time_;
+		// 	time_buff_.clear();
+		// }
+
+		// if((current_time_ - last_switch_time_) > 0.25 && (current_time_ - last_switch_time_) < 0.8)
+		// {
+		// 	if (time_buff_.size() < 6)
+		// 	{
+		// 		time_buff_.emplace_back(current_time_);
+		// 	}
+		// 	else
+		// 	{
+		// 		time_buff_.pop_front();
+		// 		time_buff_.emplace_back(current_time_);
+		// 	}
+		// 	last_switch_time_ = current_time_;
+		// }
+
+		// if(time_buff_.size() > 5)
+		// {
+		// 	is_gyro_ = true;
+		// }else
+		// {
+		// 	is_gyro_ = false;
+		// }
 	}
-	if (cnt_switch > 5)
+
+	std::cout << "time_buff_ size is: " << time_buff.size() << std::endl;
+
+	if (!flag_switch)
 	{
-		is_gyro = anGyro(time_buff);
+		cnt_switch = 0;
 	}
+
+	if (std::abs(current_time_ - last_switch_time_) > 1.0)
+	{
+		is_gyro = false;
+		is_gyro_cnt_ = 0;
+	}
+
+	time_diff = current_time_ - last_switch_time_;
+
 	std::pair<Eigen::Vector3d, Eigen::Vector3d> cam_ptz_pose;
 	cam_ptz_pose.first = obj.coord;
 	cam_ptz_pose.second = obj.pyr;
@@ -578,39 +607,36 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 	current_state[3] = current_time_;
 
 	Eigen::Vector3d now_v;
-	if (flag_v == true)
+	if (velocities_.size() < velocities_deque_size_)
 	{
-		now_v = last_velocity_;
+		velocities_.push_back(current_state);
 	}
 	else
 	{
-		if (velocities_.size() < velocities_deque_size_)
-		{
-			velocities_.push_back(current_state);
-		}
-		else
-		{
-			velocities_.pop_front();
-			velocities_.push_back(current_state);
-		}
-		now_v = CeresVelocity(velocities_);
-
-		// if( now_v[0]*last_velocity_[0] < 0 && v_count < 50)
-		// {
-		// 	v_count++;
-		// 	last_velocity_ = now_v;
-		// }else
-		// {
-		// 	v_count = 0;
-		// }
+		velocities_.pop_front();
+		velocities_.push_back(current_state);
 	}
+	now_v = CeresVelocity(velocities_);
+
+	if (isnan(now_v[0]) || isnan(now_v[1]) || isnan(now_v[2]))
+	{
+		now_v = last_velocity_;
+	}
+	// if( now_v[0]*last_velocity_[0] < 0 && v_count < 50)
+	// {
+	// 	v_count++;
+	// 	last_velocity_ = now_v;
+	// }else
+	// {
+	// 	v_count = 0;
+	// }
 
 	// now_v[0] = 0;
 	now_v[1] = 0;
 	// now_v[2] = 0;
 	cv::Point3f point;
-	point.x = now_v[0];
-	//drawCurveData(point);
+	// point.x = now_v[0];
+	//  drawCurveData(point);
 
 	Eigen::Vector3d predict_location;
 
@@ -621,37 +647,25 @@ GimbalPose PredictorPose::run(GimbalPose &imu_data, std::vector<Object> &objects
 	predict_location[2] = cam_ptz_pose.first[2] + (now_v[2] * (fly_t));
 	if (is_gyro)
 	{
-		double min, max;
-		if (left_switch[0] < right_switch[0])
+		float distance_;
+		distance_ = std::sqrt(predict_location[0] * predict_location[0] + predict_location[2] * predict_location[2]);
+		float yaw_pre = std::asin(predict_location[0] / distance_) * 180 / CV_PI;
+
+		float distance_right;
+		distance_right = std::sqrt(right_switch[0] * right_switch[0] + right_switch[2] * right_switch[2]);
+		float yaw_right = std::asin(right_switch[0] / distance_right) * 180 / CV_PI;
+
+		float distance_left;
+		distance_left = std::sqrt(left_switch[0] * left_switch[0] + left_switch[2] * left_switch[2]);
+		float yaw_left = std::asin(left_switch[0] / distance_left) * 180 / CV_PI;
+
+		if (yaw_pre > yaw_right)
 		{
-			min = left_switch[0];
-			max = right_switch[0];
-		}else
-		{
-			min=right_switch[0];
-			max=left_switch[0];
+			predict_location = left_switch;
 		}
-		
-		if (predict_location[0] > max)
+		else if (yaw_pre < yaw_left)
 		{
-			predict_location[0] = min;
-			left_flag=true;
-		}
-		else if(predict_location[0] < min)
-		{
-			predict_location[0] = max;
-			right_flag=true;
-		}
-		// else if(predict_location[0] > left_switch[0] && predict_location[0] < right_switch[0])
-		predict_location[0] = (min+max)/2;
-		if(cam_ptz_pose.first[2] > 4.0)
-		{
-			predict_location=cam_ptz_pose.first;
-		}
-		if (current_time_ - get_time(time_buff) > 0.6)
-		{
-			is_gyro = false;
-			cnt_switch = 0;
+			predict_location = right_switch;
 		}
 	}
 	std::cout << "predict expression " << (now_v[0] * (fly_t)) << " cm " << std::endl;
@@ -691,7 +705,7 @@ float PredictorPose::bullteFlyTime(Eigen::Vector3d coord)
 
 	std::cout << "[p1.x] " << p1.x << " [p1.x] " << p1.y << " [p1.z] " << p1.z << std::endl;
 
-	float v0_ = 16;
+	//float v0_ = 16;
 
 	float g = 9.80665;
 
@@ -711,7 +725,7 @@ float PredictorPose::bullteFlyTime(Eigen::Vector3d coord)
 	}
 
 	// pitch值
-	float a = -0.5 * g * (std::pow(distance1, 2) / std::pow(v0_, 2));
+	float a = -0.5 * g * (std::pow(distance1, 2) / std::pow(v0, 2));
 	float b = distance1;
 	float c = a - p1.y;
 
@@ -736,7 +750,7 @@ float PredictorPose::bullteFlyTime(Eigen::Vector3d coord)
 
 	float PI_pitch = (gm_ptz.pitch / 180) * CV_PI; // 弧度制
 
-	return distance1 / (v0_ * std::cos(PI_pitch));
+	return distance1 / (v0 * std::cos(PI_pitch));
 }
 
 Object PredictorPose::ArmorSelect(std::vector<Object> &objects)
@@ -833,30 +847,29 @@ Eigen::Vector3d PredictorPose::CeresVelocity(std::deque<Eigen::Vector4d> velocit
 	// ave_v_[0] = vx;
 	// ave_v_[1] = vy;
 	// ave_v_[2] = vz;
-	
+
 	// if (ave_v.size() != 0)
 	// {
-		// double sum_vx, sum_vy, sum_vz;
-		// for (int u = 0; u < ave_v.size(); u++)
-		// {
-		// 	sum_vx += ave_v[u][0];
-		// 	sum_vy += ave_v[u][1];
-		// 	sum_vz += ave_v[u][2];
-		// }
-		// double aver_vx = sum_vx / ave_v.size();
-		// double aver_vy = sum_vy / ave_v.size();
-		// double aver_vz = sum_vz / ave_v.size();
+	// double sum_vx, sum_vy, sum_vz;
+	// for (int u = 0; u < ave_v.size(); u++)
+	// {
+	// 	sum_vx += ave_v[u][0];
+	// 	sum_vy += ave_v[u][1];
+	// 	sum_vz += ave_v[u][2];
+	// }
+	// double aver_vx = sum_vx / ave_v.size();
+	// double aver_vy = sum_vy / ave_v.size();
+	// double aver_vz = sum_vz / ave_v.size();
 
-	if (vx * last_velocity_[0] < 0 && v_count < 4)
+	if (vx * last_velocity_[0] < 0)
 	{
 		vx = last_velocity_[0];
 		v_count++;
 	}
-        else
+	else
 	{
-		v_count=0;
+		v_count = 0;
 	}
-
 
 	return {vx, vy, vz};
 }

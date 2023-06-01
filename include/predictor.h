@@ -1,12 +1,34 @@
 
 #pragma once
+#ifndef _PREDICTOR_H_
+#define _PREDICTOR_H_
 
 #include "../common/common.h"
 #include "TRTModule.hpp"
 #include <ceres/jet.h>
 #include <ceres/ceres.h>
 #include <algorithm>
+
+#define RESET "\033[0m"
+#define BLACK "\033[30m"              /* Black */
+#define RED1 "\033[31m"               /* Red */
+#define GREEN "\033[32m"              /* Green */
+#define YELLOW "\033[33m"             /* Yellow */
+#define BLUE1 "\033[34m"              /* Blue */
+#define MAGENTA "\033[35m"            /* Magenta */
+#define CYAN "\033[36m"               /* Cyan */
+#define WHITE "\033[37m"              /* White */
+#define BOLDBLACK "\033[1m\033[30m"   /* Bold Black */
+#define BOLDRED "\033[1m\033[31m"     /* Bold Red */
+#define BOLDGREEN "\033[1m\033[32m"   /* Bold Green */
+#define BOLDYELLOW "\033[1m\033[33m"  /* Bold Yellow */
+#define BOLDBLUE "\033[1m\033[34m"    /* Bold Blue */
+#define BOLDMAGENTA "\033[1m\033[35m" /* Bold Magenta */
+#define BOLDCYAN "\033[1m\033[36m"    /* Bold Cyan */
+#define BOLDWHITE "\033[1m\033[37m"   /* Bold White */
+
 using namespace Horizon;
+
 // 小装甲实际大小
 static const float kRealSmallArmorWidth = 13.5;
 static const float kRealSmallArmorHeight = 5.7;
@@ -227,11 +249,13 @@ public:
     Eigen::Vector3d predict_location_;
 
 public:
-    float v0 = 28; // 弹速
+    float v0 ; // 弹速
     float bullteFlyTime(Eigen::Vector3d coord);
     GimbalPose gm_ptz; // 角度制
     double last_time_;
     double current_time_;
+    double last_switch_time_ ;
+    double time_diff = 0;
     cv::Point2f obj_pixe_;
 
 public:
@@ -239,68 +263,51 @@ public:
     float move_;
     GimbalPose last_eular_;
 
-    int count = 0;
     bool flag_v = false;
-    bool flag_switch=false;
-    Object last_obj;
-
+    bool flag_switch = false;
     bool left_flag = false;
     bool right_flag = false;
+    bool is_gyro = false;
 
     int v_count = 0;
-
     int cnt_switch = 0;
-    bool is_gyro = false;
+    int is_gyro_cnt_ = 0;
+
+    Object last_obj;
     Vector3d left_switch;
     Vector3d right_switch;
 
     std::deque<double> time_buff;
     bool isSwitch(Vector3d up_switch, Vector3d down_switch)
     {
-        // float x1 = std::abs(up_switch[0] - down_switch[0]);
-        // float z1 = std::abs(up_switch[2] - down_switch[2]);
-        // float residual_distance = 0;
-
-        // if (up_switch[2] > 3.5)
-        // {
-        //     z1 = 0;
-        // }
-
-        // if(up_switch[0] > 3.5)
-        // {
-        //     x1 = 0;
-        // }
         float distance_;
         distance_ = std::sqrt(up_switch[0] * up_switch[0] + up_switch[2] * up_switch[2]);
-        float yaw_now = std::sin(up_switch[0] / distance_) * 180 / CV_PI;
+        float yaw_now = std::asin(up_switch[0] / distance_) * 180 / CV_PI;
 
         float distance_last;
         distance_last = std::sqrt(down_switch[0] * down_switch[0] + down_switch[2] * down_switch[2]);
         float yaw_last = std::asin(down_switch[0] / distance_last) * 180 / CV_PI;
-        if (std::abs(yaw_now - yaw_last) > 3.0)
+
+        if (std::abs(yaw_now - yaw_last) > 3)
         {
-            if (up_switch[0] > down_switch[0])
-            {
-                right_switch = up_switch;
-                left_switch = down_switch;
-            }
-            else
-            {
-                right_switch = down_switch;
-                left_switch = up_switch;
-            }
             return true;
         }
         else
         {
-            // right_switch=down_switch;
-            // left_switch=up_switch;
             return false;
         }
     }
     bool anGyro(std::deque<double> time_buff_)
     {
-        if (time_buff_[3] - time_buff_[2] < 0.5 && time_buff_[2] - time_buff_[1] < 0.5 && time_buff_[1] - time_buff_[0] < 0.5)
+        {
+            std::cout << GREEN << "4 --- 3: " << std::abs(time_buff_[4] - time_buff_[3]) << std::endl;
+            std::cout << GREEN << "3 --- 2: " << std::abs(time_buff_[3] - time_buff_[2]) << std::endl;
+            std::cout << GREEN << "2 --- 1: " << std::abs(time_buff_[2] - time_buff_[1]) << std::endl;
+            std::cout << GREEN << "1 --- 0: " << std::abs(time_buff_[1] - time_buff_[0]) << std::endl;
+            std::cout << WHITE << std::endl;
+        }
+
+        if (time_buff_[4] - time_buff_[3] < 1.8 && time_buff_[4] - time_buff_[3] > 0.1 && time_buff_[3] - time_buff_[2] < 1.8 && time_buff_[3] - time_buff_[2] > 0.1 && time_buff_[2] - time_buff_[1] < 1.8 && time_buff_[2] - time_buff_[1] > 0.1 && time_buff_[1] - time_buff_[0] < 1.8 && time_buff_[2] - time_buff_[1] > 0.1)
         {
             return true;
         }
@@ -323,3 +330,4 @@ public:
     }
     std::deque<Eigen::Vector3d> ave_v;
 };
+#endif

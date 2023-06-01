@@ -4,8 +4,16 @@
 
 // #define VIDEO
 // #define SAVE_VIDEO
-//#define DAHENG
- #define MIDVISION
+
+#define DAHENG
+// #define MIDVISION
+
+#define DEBUG
+//#define Release
+
+#define debug_color COLOR::BLUE
+#define debug_state 0
+#define debug_v0 30
 
 using namespace Horizon;
 
@@ -74,11 +82,11 @@ void Factory::producer()
 	cap >> src;
 	std::cout << src.size().width << "   " << src.size().height << std::endl;
 	int frame_cnt = 0;
-	const std::string &storage_location = "../video/";
+	const std::string &storage_location = "../record/";
 	char now[64];
 	std::time_t tt;
 	struct tm *ttime;
-	int width = 1080;
+	int width = 1280;
 	int height = 1024;
 	tt = time(nullptr);
 	ttime = localtime(&tt);
@@ -127,7 +135,7 @@ void Factory::producer()
 	cv::Mat image;
 	//    GxCamera::camera_ptr_->GetMat(image);
 	int frame_cnt = 0;
-	const std::string &storage_location = "../video/";
+	const std::string &storage_location = "../record/";
 	char now[64];
 	std::time_t tt;
 	struct tm *ttime;
@@ -215,68 +223,43 @@ void Factory::producer()
 
 #ifdef MIDVISION
 
-#ifdef SAVE_VIDEO
-	cv::Mat image;
-	//    GxCamera::camera_ptr_->GetMat(image);
-	int frame_cnt = 0;
-	const std::string &storage_location = "../video/";
-	char now[64];
-	std::time_t tt;
-	struct tm *ttime;
-	int width = 1280;
-	int height = 1024;
-	tt = time(nullptr);
-	ttime = localtime(&tt);
-	strftime(now, 64, "%Y-%m-%d_%H_%M_%S", ttime); // 以时间为名字
-	std::string now_string(now);
-	std::string path(std::string(storage_location + now_string).append(".avi"));
-	auto writer = cv::VideoWriter(path, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 25.0, cv::Size(width, height)); // Avi format
-	std::future<void> write_video;
-	if (!writer.isOpened())
-	{
-		cerr << "Could not open the output video file for write\n";
-		return;
-	}
-#endif
-
 	std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
 	while (true)
 	{
 		if (MidCamera::camera_ptr_ != nullptr)
 		{
-			while (image_buffer_front_ - image_buffer_rear_ > IMGAE_BUFFER)
+
+			std::cout << "enter producer" << std::endl;
+			while (image_buffer_front_ - image_buffer_rear_ > IMGAE_BUFFER - 1)
 			{
 			};
-			// image_mutex_.lock();
+			bool is = image_mutex_.try_lock();
+			std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+
 			if (MidCamera::camera_ptr_->GetMat(image_buffer_[image_buffer_front_ % IMGAE_BUFFER]))
 			{
-				std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-				std::chrono::duration<double> time_run = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t0);
+				std::chrono::duration<double> time_run = std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0);
 				// std::cout << "time :" << time_run.count() << std::endl;
 
 				MidCamera::camera_ptr_->SetExpose(MidCamera::MV_exp_value);
 
+				// if (!is)
+				// {
+				// 	std::cout << "try lock failed!!" << std::endl;
+				// }
 				// std::cout << "enter producer lock" << std::endl;
 				timer_buffer_[image_buffer_front_ % IMGAE_BUFFER] = time_run.count();
+				// cv::imshow("windowName", image_buffer_[image_buffer_front_ % IMGAE_BUFFER]);
 				++image_buffer_front_;
 
-#ifdef SAVE_VIDEO
-				frame_cnt++;
-				cv::Mat src = image_buffer_[image_buffer_front_ % IMGAE_BUFFER];
-				if (frame_cnt % 10 == 0)
-				{
-					frame_cnt = 0;
-					// 异步读写加速,避免阻塞生产者
-					write_video = std::async(std::launch::async, [&, src]()
-											 { writer.write(src); });
-				}
-#endif
+				// std::cout << "out producer lock" << std::endl;
 			}
 			else
 			{
 				delete MidCamera::camera_ptr_;
 				MidCamera::camera_ptr_ = nullptr;
 			}
+			image_mutex_.unlock();
 		}
 		else
 		{
@@ -286,7 +269,7 @@ void Factory::producer()
 
 			cv::namedWindow("MVCameraDebug", cv::WINDOW_AUTOSIZE);
 			cv::createTrackbar("MVExpTime", "MVCameraDebug", &MidCamera::MV_exp_value, 15000, MidCamera::MVSetExpTime);
-			MidCamera::MVSetExpTime(0, nullptr);
+			// MidCamera::MVSetExpTime(0,nullptr);
 
 			image_buffer_front_ = 0;
 			image_buffer_rear_ = 0;
@@ -320,35 +303,61 @@ void Factory::consumer()
 		serial_mutex_.lock();
 		stm32data = TimeSynchronization(MCU_data_, src_time);
 
-		predic_pose_->v0 = stm32data.init_firing_rate;
-		trtmodel.color_id = COLOR::BLUE;
-
 		imu_data.yaw = stm32data.yaw_data_.f;
 		imu_data.pitch = stm32data.pitch_data_.f;
-
-		/*if (stm32data.color_)
+#ifdef DEBUG		
+		trtmodel.color_id = debug_color;
+		trtmodel.State_outpost = debug_state;
+	    predic_pose_->v0 = debug_v0; 
+#endif
+#ifdef Release 
+		predic_pose_->v0 = stm32data.init_firing_rate;
+		if (stm32data.state_outpost)
+		{
+			trtmodel.State_outpost = true;
+		}
+		else
+		{
+			trtmodel.State_outpost = false;
+		}
+        
+		if (stm32data.color_)
 		{
 			trtmodel.color_id = COLOR::BLUE;
 		}
 		else
 		{
 			trtmodel.color_id = COLOR::RED;
-		}*/
+		}
+#endif
 		serial_mutex_.unlock();
 
 		// infer.run(img);
-		auto detectors = trtmodel(img);
-
+		auto armors = trtmodel(img);
 		serial_mutex_.lock();
 
-		if (detectors.size() != 0)
+		// std::vector<Object> armor;
+		// for (int i = 0; i < armors.size(); i++)
+		// {
+		// 	std::pair<Eigen::Vector3d, Eigen::Vector3d> world_cam_pose;
+		// 	world_cam_pose = pnp_solver_->poseCalculation(armors[i]);
+
+		// 	if (std::abs(world_cam_pose.second[0]) > 7)
+		// 	{
+		// 		// armor[i].coord = world_cam_pose.first;
+		// 		// armor[i].pyr = world_cam_pose.second;
+		// 		continue;
+		// 	}
+
+		// }
+		if (armors.size() != 0)
 		{
 			predic_pose_->state_ = ARMOR_STATE_::TRACK;
 		}
 
 		if (predic_pose_->state_ != ARMOR_STATE_::LOSS)
 		{
-			gim = predic_pose_->run(imu_data, detectors, src_time);
+			gim = predic_pose_->run(imu_data, armors, src_time);
 			coord = predic_pose_->last_pose_.first;
 			rotation = predic_pose_->last_pose_.second;
 			visiondata.is_have_armor = true;
@@ -365,9 +374,10 @@ void Factory::consumer()
 		// 发送时间戳，记录为得到图像处理前的时间
 		visiondata.time.f = src_time;
 
-		serial_mutex_.unlock();
 		// datacontroler.state_ = 0;
 		datacontroler.sentData(fd, visiondata);
+
+		serial_mutex_.unlock();
 
 		if (display_mode == DisplayMode::Open)
 		{
@@ -456,19 +466,18 @@ void Factory::consumer()
 			{
 				cv::circle(img, {200, 500}, 5, cv::Scalar(255, 0, 0), 3);
 
-
 				Eigen::Vector3d pl = pw_to_pc(predic_pose_->left_switch, predic_pose_->transform_vector_);
 				Eigen::Matrix3d F1;
 				cv2eigen(predic_pose_->pnp_solve_->K_, F1);
 				Eigen::Vector3d pul = pc_to_pu(pl, F1);
 
-				//cv::circle(img, {int(pul(0, 0)), int(predic_pose_->obj_pixe_.y-100)}, 5, cv::Scalar(0, 255, 0), 3);
-				
+				cv::circle(img, {int(pul(0, 0)), int(predic_pose_->obj_pixe_.y - 100)}, 5, cv::Scalar(0, 255, 0), 3);
+
 				Eigen::Vector3d pr = pw_to_pc(predic_pose_->right_switch, predic_pose_->transform_vector_);
 				Eigen::Matrix3d Fr;
 				cv2eigen(predic_pose_->pnp_solve_->K_, Fr);
 				Eigen::Vector3d pur = pc_to_pu(pr, Fr);
-				//cv::circle(img, {int(pur(0, 0)), int(predic_pose_->obj_pixe_.y-100)}, 5, cv::Scalar(255, 0, 0), 3);
+				cv::circle(img, {int(pur(0, 0)), int(predic_pose_->obj_pixe_.y - 100)}, 5, cv::Scalar(255, 0, 0), 3);
 			}
 			else
 			{

@@ -19,6 +19,7 @@
 #include "../common/preprocess.h"
 #include "../common/common.h"
 
+
 #define MAX_IMAGE_INPUT_SIZE_THRESH 5000 * 5000
 
 #define DEVICE 0 // GPU id
@@ -37,7 +38,7 @@ enum class COLOR
 };
 
 struct Object
-{   
+{
 
     cv::Rect_<float> rect; // rect
     float landmarks[10];   // 四点
@@ -54,6 +55,7 @@ struct bbox
     float score;
 };
 
+
 /*
  * 四点模型
  */
@@ -61,7 +63,7 @@ class TRTModule
 {
     static constexpr int TOPK_NUM = 128;
     static constexpr float KEEP_THRES = 0.1f;
-    
+
 public:
     explicit TRTModule(const std::string &trt_file);
 
@@ -72,8 +74,6 @@ public:
     TRTModule operator=(const TRTModule &) = delete;
 
     std::vector<Object> operator()(const cv::Mat &src);
-
-   
 
 private:
     float intersection_area(const Object &a, const Object &b);
@@ -95,7 +95,7 @@ private:
                         int OUTPUT_CANDIDATES,
                         int top,
                         int left,
-                       const cv::Mat &src);
+                        const cv::Mat &src);
     void doInference_cu(nvinfer1::IExecutionContext &context,
                         cudaStream_t &stream,
                         void **buffers,
@@ -113,8 +113,10 @@ private:
     uint8_t *img_host = nullptr;
     uint8_t *img_device = nullptr;
     int output_size = 1;
+
 public:
     COLOR color_id;
+    bool State_outpost;
 };
 #endif
- /* _ONNXTRTMODULE_HPP_ */
+/* _ONNXTRTMODULE_HPP_ */

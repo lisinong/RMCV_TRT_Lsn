@@ -164,7 +164,7 @@ void TRTModule::generate_yolox_proposals(float *feat_blob, float prob_threshold,
             obj.prob = score;
             int k = 0;
 
-            //std::cout << "obj id " << obj.label << std::endl;
+            // std::cout << "obj id " << obj.label << std::endl;
 
             // 装甲板四点共8位
             obj.landmarks[0] = landmarks[0];
@@ -189,26 +189,49 @@ COLOR color_judge(cv::Rect &rect, cv::Mat &img, COLOR color_id)
         0 <= rect.height && rect.y + rect.height <= img.rows)
     {
         Mat src = img;
-        //   Mat splited_image[3];
-
-        //   split(src, splited_image);
-
-        //   if(color_id==COLOR::BLUE){
-        //   cout << "	识别蓝色 " << endl;
-        //       src= splited_image[0] - 0.5*splited_image[1] - 0.8*splited_image[2];
-        //   }//蓝色
-
-        //   else if (color_id==COLOR::RED)
-        //   {
-        //      cout << "	识别红色 " << endl;
-        //       src = splited_image[2] - splited_image[1] -0.8*splited_image[0];
-        //   }//红色
-
-        int sum_r = 0, sum_b = 0;
+        Mat splited_image[3];
         auto roi = src(rect);
 
+        split(roi, splited_image);
+
+        if (color_id == COLOR::BLUE)
+        {
+            cout << "	识别蓝色 " << endl;
+            roi = splited_image[0] - 0.5 * splited_image[1] - 0.8 * splited_image[2];
+        } // 蓝色
+
+        else if (color_id == COLOR::RED)
+        {
+            cout << "	识别红色 " << endl;
+            roi = splited_image[2] - splited_image[1] - 0.8 * splited_image[0];
+        } // 红色
+        threshold(roi, roi, threshold_param, 255, THRESH_BINARY);
+
+        // imshow("binary", roi);
+        vector<std::vector<cv::Point>> led_contours;
+        vector<cv::Vec4i> hierarchy;
+        RotatedRect led_rect;
+
+        findContours(roi, led_contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE); // RETR_EXTERNAL
+        unsigned short contours_size = static_cast<unsigned short>(led_contours.size());
+
+        for (unsigned short contour_index = 0; contour_index < contours_size; contour_index++)
+        {
+
+            vector<cv::Point> &led_contour = led_contours[contour_index];
+            // double area = contourArea(led_contour);
+
+            if (led_contour.empty())
+            {
+                return COLOR::GRAY;
+            }
+            else
+            {
+            }
+        }
+        int sum_r = 0, sum_b = 0;
+
         // Iterate through the ROI
-        Point pt(rect.width - 2);
         for (int i = 1; i < roi.rows / 2; i++)
         {
             // if point is inside contour
@@ -219,7 +242,7 @@ COLOR color_judge(cv::Rect &rect, cv::Mat &img, COLOR color_id)
             }
         }
         // Sum of red pixels > sum of blue pixels ?
-       //std::cout << "sum_r1:" << sum_r1 << "sum_b1:" << sum_b1 << endl;
+        // std::cout << "sum_r1:" << sum_r1 << "sum_b1:" << sum_b1 << endl;
         if (sum_r > sum_b)
         {
             color_id_ = COLOR::RED;
@@ -242,6 +265,7 @@ COLOR color_judge(cv::Rect &rect, cv::Mat &img, COLOR color_id)
 
 void TRTModule::decode_outputs(float *prob, std::vector<Object> &objects, float scale, const int img_w, const int img_h, int OUTPUT_CANDIDATES, int top, int left, const cv::Mat &src)
 {
+
     std::vector<Object> proposals;
     std::vector<bbox> bboxes;
     generate_yolox_proposals(prob, BBOX_CONF_THRESH, proposals, OUTPUT_CANDIDATES);
@@ -305,12 +329,22 @@ void TRTModule::decode_outputs(float *prob, std::vector<Object> &objects, float 
         {
             cout << "红色装甲板" << endl;
         }
+
         if (id != color_id)
         {
             continue;
         }
-
-        //std::cout << "obj id " << obj.label << std::endl;
+        if(obj.label == 2 || (obj.label == 0 && State_outpost))
+        {
+            continue;
+        }
+        // std::pair<Eigen::Vector3d, Eigen::Vector3d> world_cam_pose;
+        // world_cam_pose = pnp_solveR_->poseCalculation(objects[i]);
+        // if (std::abs(world_cam_pose.second[0]) > 9)
+        // {
+        //     cout << "hello"  << endl;
+        //     continue;
+        // }
 
         objects.emplace_back(obj);
     }
@@ -417,10 +451,10 @@ std::vector<Object> TRTModule::operator()(const cv::Mat &img)
         cv::line(img, cv::Point(objects[i].pts[3].x, objects[i].pts[3].y), cv::Point(objects[i].pts[1].x, objects[i].pts[1].y), cv::Scalar(0, 255, 0), 2);
         cv::line(img, cv::Point(objects[i].pts[1].x, objects[i].pts[1].y), cv::Point(objects[i].pts[0].x, objects[i].pts[0].y), cv::Scalar(0, 255, 0), 2);
         char test[100];
-		sprintf(test, "label:%0.1d", objects[i].label);
-		cv::putText(img, test, cv::Point(objects[i].pts[0].x, objects[i].pts[0].y-10), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 1, 8);
+        sprintf(test, "label:%0.1d", objects[i].label);
+        cv::putText(img, test, cv::Point(objects[i].pts[0].x, objects[i].pts[0].y - 10), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 1, 8);
 
-        //cv::rectangle(img, cv::Point(objects[i].rect.x,objects[i].rect.y),cv::Point(objects[i].rect.x+objects[i].rect.width,objects[i].rect.y+objects[i].rect.height), cv::Scalar(0,255,0), 2);
+        // cv::rectangle(img, cv::Point(objects[i].rect.x,objects[i].rect.y),cv::Point(objects[i].rect.x+objects[i].rect.width,objects[i].rect.y+objects[i].rect.height), cv::Scalar(0,255,0), 2);
     }
     delete prob;
     return objects;
