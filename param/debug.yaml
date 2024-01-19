@@ -1,0 +1,31 @@
+%YAML:1.0
+---
+small_armor:
+  width: 13.5
+  height: 5.7
+large_armor:
+  width: 22.5
+  height: 5.7
+
+#英雄机械偏置
+# X_BIAS: 0.0
+# Y_BIAS: 0.05
+# Z_BIAS: 0.035
+#哨兵机械偏置
+# X_BIAS: 0.0
+# Y_BIAS: 0.066
+# Z_BIAS: 0.102
+#步兵机械偏置
+X_BIAS: 0.0
+Y_BIAS: 0.036
+Z_BIAS: 0.115
+
+#视觉识别的颜色设置
+debug_color: red
+#关于哨兵的前哨站状态设置
+outpost_state: true
+#视觉所需要的弹速设置
+fire_v0: 30
+
+confidence: 0.646
+nms_threshold: 0.5
