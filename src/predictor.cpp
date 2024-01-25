@@ -199,7 +199,7 @@ std::pair<Eigen::Vector3d, Eigen::Vector3d> PnpSolver::poseCalculation(Object &o
 	}
 	fs.release();
 
-	if (!(point_in_world.size()) == 4 && !(point_in_pixe.size() == 4))
+	if (point_in_world.size() != 4 && point_in_pixe.size() != 4)
 	{
 		std::cout << "[world] size " << point_in_world.size() << std::endl;
 		std::cout << "[pixe] size " << point_in_pixe.size() << std::endl;
