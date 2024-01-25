@@ -69,7 +69,7 @@ bool DaHengCamera::StartDevice(){
 //    streamOpenParam.pszContent = pszContent;
 
     streamOpenParam.openMode = GX_OPEN_INDEX; //枚举号方式打开
-    streamOpenParam.pszContent = "1";
+    streamOpenParam.pszContent = (char*)"1";
     status = GXOpenDevice(&streamOpenParam, &hDevice);
     if(status == GX_STATUS_SUCCESS){
         std::cout<<"设备打开成功!"<<std::endl;
@@ -244,6 +244,7 @@ bool DaHengCamera::Set_BALANCE(){
             status = GXSetEnum(hDevice,GX_ENUM_BALANCE_RATIO_SELECTOR,GX_BALANCE_RATIO_SELECTOR_GREEN);
             break;
         }
+        default:break;
     }
     status = GXSetFloat(hDevice, GX_FLOAT_BALANCE_RATIO, Balence_value/10.0);
     if(status == GX_STATUS_SUCCESS)

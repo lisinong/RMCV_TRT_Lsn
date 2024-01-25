@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(RMCV_TRT)
 
+
 #if(EXISTS /usr/bin/clang AND EXISTS /usr/bin/clang++)
 #   set(CMAKE_C_COMPILER /usr/bin/clang)
 #   set(CMAKE_CXX_COMPILER /usr/bin/clang++)
@@ -21,7 +22,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(MV_SDK /home/lsn/vision_lib/linuxSDK_V2.1.0.28/lib/x64/libMVSDK.so)
 set(SDK_DIR /home/lsn/vision_lib/Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.2.2104.9022/Galaxy_camera/lib/x86_64/libgxiapi.so)
 # C++11 标准、o3优化、多线程
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Wno-sign-compare  -Wno-deprecated-declarations -pthread -Wall -Ofast -g -Wfatal-errors -D_MWAITXINTRIN_H_INCLUDED")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Wno-sign-compare  -Wno-deprecated-declarations -pthread -Wall -Ofast -fopenmp -g -Wfatal-errors -D_MWAITXINTRIN_H_INCLUDED")
 
 set(OpenCV_DIR "/home/lsn/opencv-4.5.5/build")
 # cuda
@@ -35,6 +36,7 @@ link_directories(/home/lsn/TensorRT-8.5.1.7/lib)
 find_package(OpenCV  REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED)
+
 # Ceres
 find_package(Ceres REQUIRED)
 file(GLOB_RECURSE "/usr/lib/python3.8/config-x86_64-linux-gnu/*.so")
@@ -55,10 +57,13 @@ aux_source_directory(./DaHeng SRC_FILES)
 
 cuda_add_executable(${PROJECT_NAME}  ${SRC_FILES} ./src/main.cpp ./include/preprocess.cu)
 
+
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})#new
 target_link_libraries(${PROJECT_NAME} ${SDK_DIR})
 target_link_libraries(${PROJECT_NAME} ${MV_SDK})
 target_link_libraries(${PROJECT_NAME} ${CERES_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} nvinfer)
 target_link_libraries(${PROJECT_NAME} cudart)
-target_link_libraries(${PROJECT_NAME} fmt::fmt nvonnxparser cuda)
+target_link_libraries(${PROJECT_NAME} fmt::fmt  nvonnxparser cuda)
+# 将spdlog的include目录添加到你的项目中
+target_include_directories(${PROJECT_NAME} PRIVATE spdlog/include)  

@@ -4,7 +4,7 @@
 #pragma once
 #ifndef _ONNXTRTMODULE_HPP_
 #define _ONNXTRTMODULE_HPP_
-
+#include <../common/logging.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -12,11 +12,15 @@
 #include <chrono>
 #include <vector>
 #include <opencv2/opencv.hpp>
+#include <opencv2/imgproc.hpp>
 #include <dirent.h>
 #include "NvInfer.h"
 #include "cuda_runtime_api.h"
 #include "../common/preprocess.h"
 #include "../common/common.h"
+#include <cuda.h>
+#include <NvOnnxParser.h>
+
 
 #define MAX_IMAGE_INPUT_SIZE_THRESH 5000 * 5000
 

@@ -1,13 +1,5 @@
 #include "TRTModule.hpp"
-#include <fstream>
-#include <../common/logging.h>
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <NvInfer.h>
-#include <NvOnnxParser.h>
-#include <fmt/format.h>
-#include <fmt/color.h>
-#include <opencv2/imgproc.hpp>
+
 
 const char *INPUT_BLOB_NAME = "input";   // onnx 输入 名字
 const char *OUTPUT_BLOB_NAME = "output"; // onnx 输出 名字
@@ -381,7 +373,7 @@ std::vector<Object> TRTModule::operator()(const cv::Mat &img, float confidence_t
 {
     float *buffer_idx = (float *)buffers[inputIndex];
     size_t size_image = img.cols * img.rows * 3;
-    size_t size_image_dst = INPUT_H * INPUT_W * 3;
+    //size_t size_image_dst = INPUT_H * INPUT_W * 3;
     memcpy(img_host, img.data, size_image);
 
     CHECK(cudaMemcpyAsync(img_device, img_host, size_image, cudaMemcpyHostToDevice, stream));
@@ -411,7 +403,7 @@ std::vector<Object> TRTModule::operator()(const cv::Mat &img, float confidence_t
         cv::line(img, cv::Point(objects[i].pts[3].x, objects[i].pts[3].y), cv::Point(objects[i].pts[1].x, objects[i].pts[1].y), cv::Scalar(0, 255, 0), 2);
         cv::line(img, cv::Point(objects[i].pts[1].x, objects[i].pts[1].y), cv::Point(objects[i].pts[0].x, objects[i].pts[0].y), cv::Scalar(0, 255, 0), 2);
         char test[100];
-        sprintf(test, "label:%0.1d", objects[i].label);
+        sprintf(test, "label:%d", objects[i].label);
         cv::putText(img, test, cv::Point(objects[i].pts[0].x, objects[i].pts[0].y - 10), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 1, 8);
     }
 #endif

@@ -260,7 +260,7 @@ void Factory::consumer()
 {
 
 	TRTModule trtmodel("/home/lsn/RMCV_TRT_Lsn/model/2023-04-16-best.engine");
-
+    
 	while (true)
 	{
 		// 若满足这个条件，则让这个函数一只停在这里
