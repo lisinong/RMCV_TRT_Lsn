@@ -539,7 +539,7 @@ Horizon::DataControler::Stm32Data Factory::TimeSynchronization(std::deque<Horizo
 	{
 		scale_time[i] = src_time - stm32s[i].time.f;
 	}
-
+   
 	for (int i = 0; i < (int)stm32s.size(); i++)
 	{
 		if (std::abs(scale_time[i]) < std::abs(scale_time[index]))
