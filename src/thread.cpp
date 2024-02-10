@@ -2,10 +2,10 @@
 #include "Send_Receive.h"
 #include "TRTModule.hpp"
 
-/*图像🔓没写*/
+/*图像🔓没写但海康的有*/
 
 using namespace Horizon;
-
+using namespace camera;
 // 世界坐标系内坐标--->相机坐标系内坐标
 inline Eigen::Vector3d pw_to_pc(const Eigen::Vector3d &pw, const Eigen::Matrix3d &R_CW)
 {
@@ -63,7 +63,13 @@ namespace MidCamera
 		camera_ptr_->SetExpose(MV_exp_value);
 	}
 }
-
+namespace HKcamera
+{
+	HikCamera *MVS_cap = nullptr;												// 创建一个相机对象
+	const string camera_config_path = "../HikVision/config/camera_config.yaml"; // 相机配置文件路径
+	const string intrinsic_para_path = "../param/camera_HK.yaml";				// 相机内参文件路径											// 记录相机初始化时间戳
+	bool debug_flag = true;														// 是否开启相机调参
+}
 void Factory::producer()
 {
 #ifdef VIDEO
@@ -117,7 +123,52 @@ void Factory::producer()
 		image_buffer_front_++;
 	}
 #endif
+#ifdef HK
+	auto t0 = std::chrono::steady_clock::now(); // 记录相机初始化时间戳
+	while (true)
+	{
+		if (HKcamera::MVS_cap != nullptr)
+		{
+			while (image_buffer_front_ - image_buffer_rear_ > IMGAE_BUFFER)
+			{
+				// std::cout << image_buffer_front_ - image_buffer_rear_ << std::endl;
+			};
+			if (HKcamera::MVS_cap->ReadImg(image_buffer_[image_buffer_front_ % IMGAE_BUFFER])) // 相机取图
+			{
+				auto t2 = std::chrono::steady_clock::now();
+				std::chrono::duration<double> time_run = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t0);
+				// HKcamera::MVS_cap->undistProcess(image); // 相机畸变矫正示例(取消注释即可使用)
+				timer_buffer_[image_buffer_front_ % IMGAE_BUFFER] = time_run.count();
+				++image_buffer_front_;
+			}
+			else
+			{
+				delete HKcamera::MVS_cap;
+				HKcamera::MVS_cap = nullptr;
+			}
 
+#ifdef SAVE_VIDEO
+			frame_cnt++;
+			cv::Mat src = image_buffer_[image_buffer_front_ % IMGAE_BUFFER];
+			if (frame_cnt % 10 == 0)
+			{
+				frame_cnt = 0;
+				// 异步读写加速,避免阻塞生产者
+				write_video = std::async(std::launch::async, [&, src]()
+										 { writer.write(src); });
+			}
+#endif
+		}
+		else
+		{
+			HKcamera::MVS_cap = new HikCamera;
+			HKcamera::MVS_cap->Init(HKcamera::debug_flag, HKcamera::camera_config_path, HKcamera::intrinsic_para_path, t0); // 初始化相机，第一个参数为 动态调节相机参数模式
+			HKcamera::MVS_cap->CamInfoShow();																				// 显示图像参数信息
+			image_buffer_front_ = 0;
+			image_buffer_rear_ = 0;
+		}
+	}
+#endif
 #ifdef DAHENG
 
 #ifdef SAVE_VIDEO
@@ -258,9 +309,7 @@ void Factory::producer()
 
 void Factory::consumer()
 {
-
 	TRTModule trtmodel("/home/lsn/RMCV_TRT_Lsn/model/2023-04-16-best.engine");
-    
 	while (true)
 	{
 		// 若满足这个条件，则让这个函数一只停在这里
@@ -457,6 +506,19 @@ void Factory::consumer()
 
 		std::cout << "                 "
 				  << "FPS: " << FPS << std::endl;
+
+		// aver_fps.push_back(FPS);
+		// if (aver_fps.size() == 99)
+		// {
+		// 	double sum = 0;
+		// 	for (int i = 0; i < 100; i++)
+		// 	{
+		// 		sum += aver_fps[i];
+		// 	}
+		// 	std::cout << "                 "
+		// 			  << "aver_fps: " << sum / 100 << std::endl;
+		// 	aver_fps.clear();
+		// }
 	}
 }
 
@@ -487,12 +549,9 @@ Horizon::DataControler::Stm32Data Factory::TimeSynchronization(std::deque<Horizo
 	}
 
 	Horizon::DataControler::Stm32Data stm32 = stm32s[index];
-
-	// stm32data.dubug_print = stm32s[index].dubug_print;
 	stm32data.pitch_data_.f = stm32s[index].pitch_data_.f;
 	stm32data.yaw_data_.f = stm32s[index].yaw_data_.f;
 	stm32data.time.f = stm32s[index].time.f;
-	std::cout << "完成时钟同步" << std::endl;
 	return stm32;
 }
 
@@ -502,27 +561,9 @@ void Factory::Getdata()
 	configureSerial(fd);
 	while (1)
 	{
-		if (fd == -1)
-		{
-			// std::cout << "[the serial dosen`t open!!!]" << std::endl;
-			//  打开串口失败
-			// return;
-			// continue;
-		}
 		serial_mutex_.lock();
 		datacontroler.getData(fd, stm32data_temp);
 		// 锁定问题
-		// stm32_deque_.Enqueue(stm32data_temp);
-		// if (1)
-		// {
-		// 	// std::cout << "is_not_receive" << std::endl;
-		// 	serial_mutex_.unlock();
-		// 	continue;
-		// }
-		// else
-		// {
-		// 	// std::cout << "is_received" << std::endl;
-		// }
 
 		if (MCU_data_.size() < mcu_size_)
 		{

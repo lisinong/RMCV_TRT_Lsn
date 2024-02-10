@@ -8,7 +8,7 @@ namespace Horizon
     {
         int fd;
         fd = open(Portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
-        cout << fd << endl;
+        //cout << fd << endl;
         if (-1 == fd)
         {
             printf("The port open error!\n");
@@ -114,10 +114,8 @@ namespace Horizon
         send_bytes[12] = data.time.c[2];
         send_bytes[13] = data.time.c[3];
 
-        if (write(fd, send_bytes, sizeof(send_bytes)))
-        {
-            std::cout << "发送数据成功！！！" << std::endl;
-        }
+        if (write(fd, send_bytes, sizeof(send_bytes))){}
+       
     }
 
     void DataControler::getData(int fd, Stm32Data &get_data)
@@ -221,14 +219,12 @@ namespace Horizon
             {
                 cout << "Invalid pitch data: " << get_data.pitch_data_.f << endl;
                 get_data.pitch_data_.f = 0;
-                
             }
 
             if (get_data.yaw_data_.f < (-180) || get_data.yaw_data_.f > (180))
             {
                 cout << "Invalid yaw data: " << get_data.yaw_data_.f << endl;
                 get_data.yaw_data_.f = 0;
-                
             }
         }
         else

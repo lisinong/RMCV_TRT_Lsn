@@ -28,9 +28,9 @@ using namespace Eigen;
 //  #define SAVE_VIDEO
 
 // 相机选择
-#define DAHENG
-//   #define MIDVISION
-
+//#define DAHENG
+//#define MIDVISION
+#define HK
 // debug相关参数
 #define Debug_yaml
 #define Debug_image
