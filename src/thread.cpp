@@ -546,7 +546,7 @@ Horizon::DataControler::Stm32Data Factory::TimeSynchronization(std::deque<Horizo
 		{
 			index = i;
 		}
-	}
+	} 
    
 	Horizon::DataControler::Stm32Data stm32 = stm32s[index];
 	stm32data.pitch_data_.f = stm32s[index].pitch_data_.f;
